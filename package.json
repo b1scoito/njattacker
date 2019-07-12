@@ -8,5 +8,8 @@
   },
   "author": "b1scoito",
   "license": "ISC",
-  "dependencies": {}
+  "dependencies": {
+    "btoa": "^1.2.1",
+    "chalk": "^2.4.2"
+  }
 }
