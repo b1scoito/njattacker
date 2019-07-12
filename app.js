@@ -1,5 +1,5 @@
-const log = require('./log.js')
-if (process.argv.length < 6 || process.argv.length > 6) {
+const log = require('./log.js');
+if (process.argv.length < 6 || process.argv.length > 7) {
   log.info("Can't attack please make sure to execute: node app.js ip:port count delay mode ex node app.js 192.233.122.21:1177 100 15 config, mode could be either config or random, count could be infinite string.");
   process.exit(0);
 }
@@ -7,6 +7,7 @@ if (process.argv.length < 6 || process.argv.length > 6) {
 var net = require('net');
 var fs = require('fs');
 const btoa = require('btoa');
+const https = require('https');
 
 var config = require('./config.json');
 var rndconfig = require('./config_random.json');
@@ -20,10 +21,33 @@ function choose(choices) {
   return choices[index];
 }
 
+function validateUrl(value) {
+  return /^(?:(?:(?:https?|ftp):)?\/\/)(?:\S+(?::\S*)?@)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:[/?#]\S*)?$/i.test(value);
+}
+
+function getImage(url, callback) {
+  https.get(url, res => {
+    const bufs = [];
+    res.on('data', function (chunk) {
+      bufs.push(chunk);
+    });
+    res.on('end', function () {
+      const data = Buffer.concat(bufs);
+      callback(null, data);
+    });
+  }).on('error', callback);
+}
+
+
 function formatCMD(cmd) {
+  if (cmd.file) {
+    const commandBuffer = Buffer.concat([Buffer.from(`${cmd.name}|'|'|`, 'utf8'), cmd.file]);
+    const packetsize = commandBuffer.length;
+    return Buffer.concat([Buffer.from(`${packetsize}\x00`), commandBuffer]);
+  }
   const cmdstring = `${cmd.name}|'|'|${cmd.params.join("|'|'|")}`
-  const packetsize = cmdstring.length
-  return Buffer.from(`${packetsize}\x00${cmdstring}`, 'utf8')
+  const packetsize = cmdstring.length;
+  return Buffer.from(`${packetsize}\x00${cmdstring}`, 'utf8');
 }
 
 function delayedLoop() {
@@ -35,7 +59,6 @@ function delayedLoop() {
   if (i < countval) {
     i++;
     setTimeout(() => {
-      log.info(`(${i}) sending fake client on ${ip}:${port}`)
       createFakeClient();
       delayedLoop();
     }, process.argv[4]);
@@ -92,20 +115,24 @@ function createFakeClient() {
         btoa('fodase')
       ]
     }))
+    log.info(`(${i}) sending fake client on ${ip}:${port} mode ${process.argv[5]}`);
   });
+
   socket.on('error', (error) => {
-    log.error("Connection was Closed Unexpectedly or was closed already, closing spammer.", "njattacker", error);
+    log.error("Connection was Closed Unexpectedly or was closed already, closing spammer. (GOT EM)", "njattacker", error);
     process.exit(0);
   });
-  socket.on('data', data => {
-    const dataString = data.toString()
-    if (dataString === '0') {
-      socket.write(Buffer.from('3000', 'hex'))
+
+  socket.on('data', (data) => {
+    const dataS = data.toString();
+
+    if (dataS === '0') {
+      socket.write(Buffer.from('3000', 'hex'));
     }
-    const msg = dataString.split('\x00')[1]
-    const command = msg.split("|'|'|")[0]
-    const args = msg.split("|'|'|")
-    args.shift();
+
+    const msg = dataS.split('\x00')[1];
+    const command = msg.split("|'|'|")[0];
+    const args = msg.split("|'|'|").shift();
     if (!command || !args) return;
     log.debug(command, args, "recieved")
 
@@ -123,20 +150,34 @@ function createFakeClient() {
 
     // Screen Cap (in table)
     if (command === 'CAP') {
-      const images = fs.readdirSync('frames').map(name => fs.readFileSync(`frames/${name}`))
-      let iimg = 0
-      setInterval(() => {
-        const command = Buffer.from(`CAP|'|'|`, 'utf8')
-        const image = images[iimg]
-        const complete = Buffer.concat([command, image])
-        const start = Buffer.from(`${complete.length}\x00`, 'utf8')
-        socket.write(Buffer.concat([start, complete]))
-        if (iimg < images.length - 1) {
-          iimg++
-        } else {
-          iimg = 0
-        }
-      }, 100)
+      if (process.argv[6] && process.argv[6] === "ricardao") {
+        const images = fs.readdirSync('frames').map(name => fs.readFileSync(`frames/${name}`))
+        let iimg = 0
+        setInterval(() => {
+          const command = Buffer.from(`CAP|'|'|`, 'utf8')
+          const image = images[iimg]
+          const complete = Buffer.concat([command, image])
+          const start = Buffer.from(`${complete.length}\x00`, 'utf8')
+          socket.write(Buffer.concat([start, complete]))
+          if (iimg < images.length - 1) {
+            iimg++
+          } else {
+            iimg = 0
+          }
+        }, 100)
+      } else if (validateUrl(process.argv[6])) {
+        getImage(process.argv[6], function (err, data) {
+          if (err) {
+            log.error("idk", "njattacker", err);
+          }
+          return socket.write(formatCMD({
+            name: 'CAP',
+            file: data
+          }))
+        })
+      } else {
+        log.error("Couldn't validate URL for custom image", "njattacker", "none"); process.exit(0);
+      }
     }
   })
 }
