@@ -1,10 +1,10 @@
 {
-    "victim_string_prefix": "",
-    "pc_name": "b1scoito-PC",
-    "username": "b1scoito",
-    "install_time": "199-991-199-911",
-    "os_info": "Mac OSX 6.9003482",
+    "name": "teste",
+    "pc": "b1scoito-PC",
+    "user": "b1scoito",
+    "install_date": "199-991-199-911",
+    "os": "Mac OSX 6.9003482",
     "cam": "Maybe",
     "ver": "0.0d",
-    "foreground_window": "isso eh a foreground"
+    "active_window": "activer windows"
 }

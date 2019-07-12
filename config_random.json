@@ -1,5 +1,5 @@
 {
-    "random_victim_string_prefixes": [
+    "names": [
         "Duh, you've been pwn3d by b1scoito",
         "Dude you were so easy!",
         "Voce foi rakeador pelo b1scoito#0017",
@@ -10,7 +10,7 @@
         "kkjkk voze se fudeu",
         "rakiado pelo boscoit efef"
     ],
-    "username": [
+    "usernames": [
         "Aaberg",
         "Aalst",
         "Aara",
@@ -21998,7 +21998,7 @@
         "Zwiebel",
         "Zysk"
     ],
-    "foreground": [
+    "active_windows": [
         "Chrome - Pornhub",
         "Discord - b1scoito#0017",
         "Chrome - XVideos"
