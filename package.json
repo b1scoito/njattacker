@@ -10,7 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "btoa": "^1.2.1",
-    "chalk": "^2.4.2",
-    "gif-frames": "^1.0.1"
+    "chalk": "^2.4.2"
   }
 }
